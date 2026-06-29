@@ -1,0 +1,13 @@
+channel: phi_proton
+name: HAL
+mode: kp_and_ll
+coupling: independent
+channels:
+  - spin: quartet_4S32
+    potential:
+      type: gaussian
+      tune:
+        targetF0: 1.43
+        b_fm: 1.07
+  - spin: doublet_2S12
+    interacting: false

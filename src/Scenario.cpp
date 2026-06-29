@@ -1,0 +1,165 @@
+#include "femto/Scenario.hpp"
+#include "femto/ChannelRegistry.hpp"
+#include "femto/PotentialUtils.hpp"
+#include "femto/FemtoModels.hpp"
+#include "femto/YamlReader.hpp"
+#include <dirent.h>
+#include <stdexcept>
+
+namespace femto {
+namespace {
+
+PotentialType parsePotentialType(const std::string& s) {
+    if (s == "gaussian") return PotentialType::Gaussian;
+    if (s == "ere") return PotentialType::Ere;
+    if (s == "folded") return PotentialType::Folded;
+    return PotentialType::Gaussian;
+}
+
+ScenarioMode parseScenarioMode(const std::string& s) {
+    if (s == "ll_only") return ScenarioMode::LlOnly;
+    return ScenarioMode::KpAndLl;
+}
+
+CouplingScheme parseCoupling(const std::string& s) {
+    if (s == "effective") return CouplingScheme::EffectiveSingleChannel;
+    if (s == "coupled") return CouplingScheme::CoupledRadial;
+    return CouplingScheme::Independent;
+}
+
+GaussianPotentialSpec parseGaussian(const YamlNode& pot) {
+    GaussianPotentialSpec g;
+    g.V0_MeV = yamlDouble(pot, "V0_MeV", 0.0);
+    g.b_fm = yamlDouble(pot, "b_fm", 1.0);
+    g.VcritFraction = yamlDouble(pot, "VcritFraction", 0.0);
+    auto tuneIt = pot.children.find("tune");
+    if (tuneIt != pot.children.end()) {
+        g.useTune = true;
+        g.targetF0 = yamlDouble(tuneIt->second, "targetF0", 1.0);
+        g.b_fm = yamlDouble(tuneIt->second, "b_fm", g.b_fm);
+    }
+    return g;
+}
+
+Scenario parseScenarioNode(const YamlNode& root) {
+    Scenario sc;
+    sc.channelName = yamlScalar(root, "channel");
+    sc.name = yamlScalar(root, "name");
+    sc.mode = parseScenarioMode(yamlScalar(root, "mode", "kp_and_ll"));
+    sc.coupling = parseCoupling(yamlScalar(root, "coupling", "independent"));
+    if (sc.coupling == CouplingScheme::CoupledRadial)
+        throw std::runtime_error("coupling scheme not implemented in Phase 1-4: " + sc.name);
+
+    auto chIt = root.children.find("channels");
+    if (chIt == root.children.end() || !chIt->second.isSequence)
+        throw std::runtime_error("scenario missing channels list: " + sc.name);
+
+    for (const auto& node : chIt->second.sequence) {
+        SpinInteractionSpec si;
+        si.spin = yamlScalar(node, "spin");
+        si.interacting = yamlBool(node, "interacting", true);
+        auto potIt = node.children.find("potential");
+        if (potIt != node.children.end()) {
+            std::string ptype = yamlScalar(potIt->second, "type", "gaussian");
+            si.potentialType = parsePotentialType(ptype);
+            if (si.potentialType == PotentialType::Gaussian)
+                si.gaussian = parseGaussian(potIt->second);
+            else if (si.potentialType == PotentialType::Ere) {
+                si.ere.f0_re = yamlDouble(potIt->second, "f0_re", 0.0);
+                si.ere.f0_im = yamlDouble(potIt->second, "f0_im", 0.0);
+                si.ere.d0_fm = yamlDouble(potIt->second, "d0_fm", 0.0);
+            }
+        }
+        auto ereIt = node.children.find("ere");
+        if (ereIt != node.children.end()) {
+            si.potentialType = PotentialType::Ere;
+            si.ere.f0_re = yamlDouble(ereIt->second, "f0_re", 0.0);
+            si.ere.f0_im = yamlDouble(ereIt->second, "f0_im", 0.0);
+            si.ere.d0_fm = yamlDouble(ereIt->second, "d0_fm", 0.0);
+        }
+        sc.channels.push_back(si);
+    }
+    return sc;
+}
+
+} // namespace
+
+Scenario loadScenario(const std::string& path) {
+    return parseScenarioNode(loadYamlFile(path));
+}
+
+Scenario loadScenarioByName(const std::string& channel, const std::string& scenarioName,
+                            const std::string& configRoot) {
+    const std::string root = configRoot.empty() ? defaultConfigRoot() : configRoot;
+    std::string path = root + "/scenarios/" + channel + "_" + scenarioName + ".yaml";
+    Scenario sc = loadScenario(path);
+    if (sc.channelName != channel)
+        throw std::runtime_error("scenario channel mismatch: " + path);
+    return sc;
+}
+
+std::vector<std::string> listScenariosForChannel(const std::string& channel,
+                                                 const std::string& configRoot) {
+    const std::string root = configRoot.empty() ? defaultConfigRoot() : configRoot;
+    std::string dir = root + "/scenarios";
+    std::string prefix = channel + "_";
+    std::vector<std::string> out;
+    DIR* d = opendir(dir.c_str());
+    if (!d) return out;
+    struct dirent* ent;
+    while ((ent = readdir(d)) != nullptr) {
+        std::string name = ent->d_name;
+        if (name.size() <= prefix.size() + 5) continue;
+        if (name.compare(0, prefix.size(), prefix) != 0) continue;
+        if (name.substr(name.size() - 5) != ".yaml") continue;
+        out.push_back(name.substr(prefix.size(), name.size() - prefix.size() - 5));
+    }
+    closedir(d);
+    return out;
+}
+
+std::vector<Scenario::ResolvedSpin> Scenario::resolve(const ChannelSpec& channel,
+                                                    double mu_MeV) const {
+    std::vector<ResolvedSpin> out;
+    double Vcrit = 0;
+    bool haveVcrit = false;
+
+  for (const auto& si : channels) {
+        const SpinChannelSpec* sc = findSpinChannel(channel, si.spin);
+        if (!sc) throw std::runtime_error("unknown spin channel: " + si.spin);
+        ResolvedSpin rs;
+        rs.spin = si.spin;
+        rs.weight = sc->weight;
+        rs.interacting = si.interacting && sc->defaultInteracting;
+
+        if (si.potentialType == PotentialType::Ere) {
+            rs.f0_re = si.ere.f0_re;
+            rs.f0_im = si.ere.f0_im;
+            rs.d0_fm = si.ere.d0_fm;
+        } else if (si.potentialType == PotentialType::Gaussian) {
+            double V0 = si.gaussian.V0_MeV;
+            double b = si.gaussian.b_fm;
+            double f0 = 0, d0 = 0;
+            if (si.gaussian.useTune) {
+                V0 = tuneV0(si.gaussian.targetF0, b, mu_MeV, f0, d0);
+                rs.f0_re = f0;
+                rs.d0_fm = d0;
+            } else if (si.gaussian.VcritFraction > 0) {
+                if (!haveVcrit) {
+                    double f0c = 0, d0c = 0;
+                    Vcrit = tuneV0(500.0, b, mu_MeV, f0c, d0c);
+                    haveVcrit = true;
+                }
+                V0 = si.gaussian.VcritFraction * Vcrit;
+            }
+            rs.solver = std::make_shared<RadialSolverS>(
+                gaussianPotential({{-V0, b}}), mu_MeV);
+            if (!si.gaussian.useTune)
+                rs.solver->scatteringParams(rs.f0_re, rs.d0_fm);
+        }
+        out.push_back(std::move(rs));
+    }
+    return out;
+}
+
+} // namespace femto

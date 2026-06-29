@@ -1,0 +1,9 @@
+name: phi_alpha
+massA_MeV: 1019.461
+massB_MeV: 3727.379
+identical: false
+qsAmplitude: 0.0
+spinChannels:
+  - name: spin1
+    weight: 1.0
+    defaultInteracting: true

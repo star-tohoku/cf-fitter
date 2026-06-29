@@ -1,0 +1,11 @@
+channel: phi_proton
+name: ALICEeff
+mode: ll_only
+coupling: effective
+channels:
+  - spin: quartet_4S32
+    potential:
+      type: ere
+      f0_re: 0.85
+      f0_im: 0.16
+      d0_fm: 0.0

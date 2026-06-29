@@ -1,0 +1,12 @@
+name: phi_proton
+massA_MeV: 1019.461
+massB_MeV: 938.272
+identical: false
+qsAmplitude: 0.0
+spinChannels:
+  - name: doublet_2S12
+    weight: 0.333333
+    defaultInteracting: true
+  - name: quartet_4S32
+    weight: 0.666667
+    defaultInteracting: true

@@ -1,0 +1,11 @@
+build/
+*.o
+*.so
+*.a
+cf-calc
+cf-fit
+*.csv
+*.png
+*.pdf
+.DS_Store
+docs/development

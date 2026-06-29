@@ -1,0 +1,10 @@
+channel: phi_alpha
+name: weak
+mode: kp_and_ll
+coupling: independent
+channels:
+  - spin: spin1
+    potential:
+      type: gaussian
+      b_fm: 2.0
+      VcritFraction: 0.40
