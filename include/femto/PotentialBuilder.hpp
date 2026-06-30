@@ -37,6 +37,8 @@ public:
     static std::function<double(double)> gaussian(const GaussianSpec& spec);
     static GaussianSpec foldedGaussianSpec(const FoldedPotentialSpec& spec);
     static std::function<double(double)> foldedGaussian(const FoldedPotentialSpec& spec);
+    static double gaussianSpecV0(const GaussianSpec& spec);
+    static double gaussianSpecVolumeIntegral(const GaussianSpec& spec);
     // Legacy numeric-folding hook; prefer foldedGaussian for Gaussian-sum inputs.
     static std::function<double(double)> folded(
         const std::function<double(double)>& V2body,

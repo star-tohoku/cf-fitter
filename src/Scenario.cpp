@@ -1,5 +1,6 @@
 #include "femto/Scenario.hpp"
 #include "femto/ChannelRegistry.hpp"
+#include "femto/PotentialBuilder.hpp"
 #include "femto/PotentialUtils.hpp"
 #include "femto/FemtoModels.hpp"
 #include "femto/YamlReader.hpp"
@@ -14,6 +15,8 @@ PotentialType parsePotentialType(const std::string& s) {
     if (s == "gaussian") return PotentialType::Gaussian;
     if (s == "ere") return PotentialType::Ere;
     if (s == "folded") return PotentialType::Folded;
+    if (s == "hal_quartet_fitB") return PotentialType::HalQuartetFitB;
+    if (s == "hal_quartet_chizzali_ta12_tpe") return PotentialType::HalQuartetChizzaliTa12TPE;
     return PotentialType::Gaussian;
 }
 
@@ -116,6 +119,13 @@ Scenario parseScenarioNode(const YamlNode& root) {
 }
 
 
+double doubletV0ForB_fm(double b_fm) {
+    if (std::fabs(b_fm - 0.40) < 1e-9) return 931.5;
+    if (std::fabs(b_fm - 0.55) < 1e-9) return 571.5;
+    if (std::fabs(b_fm - 0.70) < 1e-9) return 413.5;
+    throw std::runtime_error("custom doublet folded tuning is not implemented; use doublet_b_fm: 0.40, 0.55, or 0.70");
+}
+
 GaussianSpec buildPhiNCentral(const PhiNCentralSpec& central) {
     GaussianSpec spec;
     const GaussianTerm quartet[] = {
@@ -129,17 +139,9 @@ GaussianSpec buildPhiNCentral(const PhiNCentralSpec& central) {
     }
 
     if (central.doubletWeight != 0.0) {
-        double V0 = 0.0;
         if (std::fabs(central.doublet_target_f0 + 1.54) > 1e-9)
             throw std::runtime_error("custom doublet target is not implemented; use target -1.54");
-        if (std::fabs(central.doublet_b_fm - 0.40) < 1e-9)
-            V0 = 931.5;
-        else if (std::fabs(central.doublet_b_fm - 0.55) < 1e-9)
-            V0 = 571.5;
-        else if (std::fabs(central.doublet_b_fm - 0.70) < 1e-9)
-            V0 = 413.5;
-        else
-            throw std::runtime_error("custom doublet folded tuning is not implemented; use doublet_b_fm: 0.40, 0.55, or 0.70");
+        const double V0 = doubletV0ForB_fm(central.doublet_b_fm);
         spec.terms.push_back({-central.doubletWeight * V0, central.doublet_b_fm});
     }
     return spec;
@@ -227,8 +229,60 @@ std::vector<Scenario::ResolvedSpin> Scenario::resolve(const ChannelSpec& channel
             rs.solver = std::make_shared<RadialSolverS>(
                 PotentialBuilder::foldedGaussian(fs), mu_MeV);
             rs.solver->scatteringParams(rs.f0_re, rs.d0_fm);
+        } else if (si.potentialType == PotentialType::HalQuartetFitB) {
+            rs.solver = std::make_shared<RadialSolverS>(
+                gaussianPotential({{-371.0, 0.15}, {-50.0, 0.66}, {-31.0, 1.09}}),
+                mu_MeV);
+            rs.solver->scatteringParams(rs.f0_re, rs.d0_fm);
+        } else if (si.potentialType == PotentialType::HalQuartetChizzaliTa12TPE) {
+            rs.solver = std::make_shared<RadialSolverS>(
+                halQuartetChizzaliTa12TPEPotential(), mu_MeV);
+            rs.solver->scatteringParams(rs.f0_re, rs.d0_fm);
         }
         out.push_back(std::move(rs));
+    }
+    return out;
+}
+
+FoldedPotentialSummary summarizeFoldedScenario(const Scenario& scenario,
+                                             const ChannelSpec& channel) {
+    const SpinInteractionSpec* foldedSpin = nullptr;
+    for (const auto& si : scenario.channels) {
+        if (si.potentialType == PotentialType::Folded) {
+            foldedSpin = &si;
+            break;
+        }
+    }
+    if (!foldedSpin)
+        throw std::runtime_error("scenario has no folded potential: " + scenario.name);
+
+    FoldedPotentialSummary out;
+    out.fold = foldedSpin->folded.fold;
+    if (foldedSpin->folded.central.doubletWeight != 0.0) {
+        out.hasDoublet = true;
+        out.doublet_b_fm = foldedSpin->folded.central.doublet_b_fm;
+        out.doublet_V0_MeV = doubletV0ForB_fm(out.doublet_b_fm);
+    }
+
+    FoldedPotentialSpec fs;
+    fs.phiNCentral = buildPhiNCentral(foldedSpin->folded.central);
+    fs.density = foldedSpin->folded.density;
+    fs.fold = foldedSpin->folded.fold;
+    const GaussianSpec folded = PotentialBuilder::foldedGaussianSpec(fs);
+    out.V_at_0_MeV = PotentialBuilder::gaussianSpecV0(folded);
+    out.volume_integral_MeV_fm3 = PotentialBuilder::gaussianSpecVolumeIntegral(folded);
+
+    const double mu = reducedMass(channel);
+    auto resolved = scenario.resolve(channel, mu);
+    for (const auto& rs : resolved) {
+        if (!rs.interacting) continue;
+        out.f0_fm = rs.f0_re;
+        out.d0_fm = rs.d0_fm;
+        if (rs.f0_re < 0.0) {
+            out.BE_MeV = bindingEnergyERE(rs.f0_re, rs.d0_fm, mu);
+            out.hasBE = out.BE_MeV > 0.0;
+        }
+        break;
     }
     return out;
 }

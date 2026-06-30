@@ -59,6 +59,19 @@ std::function<double(double)> PotentialBuilder::foldedGaussian(const FoldedPoten
     return gaussian(foldedGaussianSpec(spec));
 }
 
+double PotentialBuilder::gaussianSpecV0(const GaussianSpec& spec) {
+    double v = 0.0;
+    for (const auto& t : spec.terms) v += t.V_MeV;
+    return v;
+}
+
+double PotentialBuilder::gaussianSpecVolumeIntegral(const GaussianSpec& spec) {
+    double integral = 0.0;
+    for (const auto& t : spec.terms)
+        integral += t.V_MeV * std::pow(M_PI, 1.5) * std::pow(t.b_fm, 3);
+    return integral;
+}
+
 std::function<double(double)> PotentialBuilder::folded(
     const std::function<double(double)>& V2body,
     const std::function<double(double)>& density,

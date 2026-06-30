@@ -29,6 +29,7 @@ add_executable(cf-calc
   calc/main.cpp
   calc/validate_cmd.cpp
   calc/make_cf_cmd.cpp
+  calc/phi_alpha_summary_cmd.cpp
 )
 target_link_libraries(cf-calc PRIVATE CfFitterCore)
 target_include_directories(cf-calc PRIVATE ${CMAKE_SOURCE_DIR}/calc)
@@ -36,6 +37,12 @@ target_include_directories(cf-calc PRIVATE ${CMAKE_SOURCE_DIR}/calc)
 add_executable(test_square_well_solver tests/test_square_well_solver.cpp)
 target_link_libraries(test_square_well_solver PRIVATE CfFitterCore)
 target_include_directories(test_square_well_solver PRIVATE ${CMAKE_SOURCE_DIR}/calc)
+
+add_executable(test_chizzali_ta12_tpe_potential tests/test_chizzali_ta12_tpe_potential.cpp)
+target_link_libraries(test_chizzali_ta12_tpe_potential PRIVATE CfFitterCore)
+
+add_executable(test_folded_gaussian tests/test_folded_gaussian.cpp)
+target_link_libraries(test_folded_gaussian PRIVATE CfFitterCore)
 
 option(CF_FITTER_BUILD_ROOT "Build ROOT fit library and tests" ON)
 if(CF_FITTER_BUILD_ROOT)
@@ -76,6 +83,8 @@ endif()
 
 enable_testing()
 add_test(NAME square_well_solver COMMAND test_square_well_solver)
+add_test(NAME chizzali_ta12_tpe_potential COMMAND test_chizzali_ta12_tpe_potential)
+add_test(NAME folded_gaussian COMMAND test_folded_gaussian)
 add_test(NAME validate COMMAND cf-calc validate)
 
 install(TARGETS CfFitterCore cf-calc

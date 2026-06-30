@@ -311,5 +311,27 @@ gaussianPotential(std::vector<std::pair<double,double>> terms /*(V_i MeV, b_i fm
     };
 }
 
+// Chizzali et al. arXiv:2212.12690 HAL QCD t/a=12 fit-A/TPE quartet form
+// (beta=1, gamma=0 equivalent to 4S_{3/2} HAL potential in their notation).
+// Parameters: a1=-392 MeV, b1=0.128 fm, a2=-145 MeV, b2=0.284 fm,
+// A3=a3*m_pi^4=-83 MeV fm^2, b3=0.582 fm, m_pi=138 MeV for the Yukawa factor.
+inline std::function<double(double)> halQuartetChizzaliTa12TPEPotential() {
+    constexpr double a1 = -392.0, b1 = 0.128;
+    constexpr double a2 = -145.0, b2 = 0.284;
+    constexpr double A3 = -83.0, b3 = 0.582;
+    constexpr double mPiMeV = 138.0;
+    const double mPiFmInv = mPiMeV / HBARC;
+    return [=](double r) {
+        double v = a1 * std::exp(-r * r / (b1 * b1))
+                 + a2 * std::exp(-r * r / (b2 * b2));
+        if (r > 0.0) {
+            const double f = 1.0 - std::exp(-r * r / (b3 * b3));
+            const double tpe = A3 * f * f * std::exp(-2.0 * mPiFmInv * r) / (r * r);
+            v += tpe;
+        }
+        return v;
+    };
+}
+
 } // namespace femto
 #endif

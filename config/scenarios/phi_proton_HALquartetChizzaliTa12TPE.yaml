@@ -1,0 +1,10 @@
+channel: phi_proton
+name: HALquartetChizzaliTa12TPE
+mode: kp_and_ll
+coupling: independent
+channels:
+  - spin: quartet_4S32
+    potential:
+      type: hal_quartet_chizzali_ta12_tpe
+  - spin: doublet_2S12
+    interacting: false

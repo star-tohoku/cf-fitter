@@ -20,7 +20,7 @@ enum class CouplingScheme {
     CoupledRadial
 };
 
-enum class PotentialType { Gaussian, Ere, Folded };
+enum class PotentialType { Gaussian, Ere, Folded, HalQuartetFitB, HalQuartetChizzaliTa12TPE };
 
 struct GaussianPotentialSpec {
     double V0_MeV = 0.0;
@@ -84,6 +84,23 @@ Scenario loadScenarioByName(const std::string& channel, const std::string& scena
 
 std::vector<std::string> listScenariosForChannel(const std::string& channel,
                                                  const std::string& configRoot = "");
+
+struct FoldedPotentialSummary {
+    bool fold = false;
+    bool hasDoublet = false;
+    double doublet_b_fm = 0.0;
+    double doublet_V0_MeV = 0.0;
+    double f0_fm = 0.0;
+    double d0_fm = 0.0;
+    double BE_MeV = 0.0;
+    bool hasBE = false;
+    double V_at_0_MeV = 0.0;
+    double volume_integral_MeV_fm3 = 0.0;
+    std::string notes;
+};
+
+FoldedPotentialSummary summarizeFoldedScenario(const Scenario& scenario,
+                                               const ChannelSpec& channel);
 
 } // namespace femto
 

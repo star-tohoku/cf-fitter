@@ -1,0 +1,10 @@
+channel: phi_proton
+name: HALquartetFitB
+mode: kp_and_ll
+coupling: independent
+channels:
+  - spin: quartet_4S32
+    potential:
+      type: hal_quartet_fitB
+  - spin: doublet_2S12
+    interacting: false
