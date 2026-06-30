@@ -1,0 +1,76 @@
+# =============================================================================
+# ALICE p-phi reference parameters  (for cf-fitter literature comparison)
+# Source: ALICE Collaboration, "Experimental evidence for an attractive p-phi
+#         interaction", Phys. Rev. Lett. 127 (2021) 172301, arXiv:2105.05578.
+#         High-multiplicity pp collisions at sqrt(s) = 13 TeV.
+# All numbers transcribed from the published Letter (text + Fig. 2).
+# =============================================================================
+
+system:
+  pair: "p-phi (+ pbar-phi, combined)"
+  collision: "pp 13 TeV, high-multiplicity trigger"
+  pairs_below_200MeV: 41700        # p-phi  (plus 36100 pbar-phi)
+  kstar_convention: "k* = (1/2)|p1* - p2*| in the pair rest frame [MeV/c]"
+  # -> identical to the cf-fitter histogram axis convention (no factor-2 mismatch)
+
+# --- Headline Lednicky-Lyuboshits fit (spin-averaged, single effective channel) ---
+# femto ERE convention:  f(k) = ( 1/f0 + 0.5 d0 k^2 - i k )^-1   (same as cf-fitter)
+ll_fit:
+  f0_re_fm: 0.85          # +- 0.34 (stat) +- 0.14 (syst)
+  f0_im_fm: 0.16          # +- 0.10 (stat) +- 0.09 (syst)   (consistent with ZERO)
+  d0_fm:    7.85          # +- 1.54 (stat) +- 0.26 (syst)   <-- large; NOT negligible
+  note: >
+    Re(f0) deviates 2.3 sigma from 0 -> attractive, no bound state in this convention.
+    Im(f0) vanishes within uncertainties -> elastic-dominated; an Im(f0)->0 variant
+    is provided as a reference column. The large d0 makes the LL asymptotic
+    correction term [1 - d0/(2 sqrt(pi) R)] important at small R (see README).
+
+# --- Particle-emitting source (resonance source model, p-p / p-Lambda common source) ---
+source:
+  profile: gaussian
+  r_eff_fm: 1.08          # +- 0.05   at <m_T> = 1.66 GeV/c^2 for p-phi
+  fit_range_kstar_MeV: [0, 200]
+
+# --- Phenomenological potentials also fitted by ALICE (real only; Im~0) ---
+# Gaussian:  V(r) = -V_eff * exp(-mu r^2)
+phenomenological_potentials:
+  gaussian:
+    V_eff_MeV: 2.5        # +- 0.9 (stat) +- 1.4 (syst)
+    mu_inv_fm2: 0.14      # +- 0.06 (stat) +- 0.09 (syst)
+    # cf-fitter form V0 exp(-r^2/b^2):  b_fm = 1/sqrt(mu) = 2.6726 fm, depth = 2.5 MeV
+  yukawa:
+    A: 0.021              # V(r) = -A r^-1 exp(-alpha r);  g_Nphi = sqrt(A) = 0.14
+    alpha_MeV: 65.9
+
+# --- lambda decomposition of the RAW correlation function (Table 1) ---
+# (used to extract the genuine CF; the genuine CF in Fig. 2 already has lambda divided out)
+lambda_components_percent:
+  p_phi: 46.3
+  p_KK_combinatorial: 43.3
+  flat: 10.4
+
+# =============================================================================
+# Drop-in scenarios for cf-fitter (corrected vs the current repo defaults)
+# =============================================================================
+# (1) Corrected ERE scenario -- the repo's phi_proton_ALICEeff.yaml currently sets
+#     d0_fm: 0.0, which is WRONG. ALICE's d0 = 7.85 fm. Use this instead:
+scenario_phi_proton_ALICEfig:
+  channel: phi_proton
+  name: ALICEfig
+  mode: ll_only
+  coupling: effective
+  channels:
+    - spin: quartet_4S32
+      potential: { type: ere, f0_re: 0.85, f0_im: 0.16, d0_fm: 7.85 }
+
+# (2) ALICE Gaussian-potential scenario for the KP (Numerov) cross-check.
+#     Requires a single weight-1 effective channel; a throwaway channel works:
+scenario_phi_proton_eff_ALICEgauss:
+  channel: phi_proton_eff      # single spin "eff" with weight 1.0 (masses = phi, p)
+  name: ALICEgauss
+  mode: kp_and_ll
+  coupling: independent
+  channels:
+    - spin: eff
+      potential: { type: gaussian, V0_MeV: 2.5, b_fm: 2.6726 }   # depth positive!
+  # NB: solver extracts f0 = +0.632 fm, d0 = 15.3 fm, no bound state (as expected).

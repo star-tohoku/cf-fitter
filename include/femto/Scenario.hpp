@@ -2,6 +2,7 @@
 #define FEMTO_SCENARIO_HPP
 
 #include "femto/ChannelSpec.hpp"
+#include "femto/PotentialBuilder.hpp"
 #include <complex>
 #include <memory>
 #include <string>
@@ -35,12 +36,26 @@ struct EreSpec {
     double d0_fm = 0.0;
 };
 
+struct PhiNCentralSpec {
+    double quartetWeight = 1.0;
+    double doubletWeight = 0.0;
+    double doublet_b_fm = 0.55;
+    double doublet_target_f0 = -1.54;
+};
+
+struct FoldedScenarioSpec {
+    PhiNCentralSpec central;
+    GaussianDensitySpec density;
+    bool fold = true;
+};
+
 struct SpinInteractionSpec {
     std::string spin;
     bool interacting = true;
     PotentialType potentialType = PotentialType::Gaussian;
     GaussianPotentialSpec gaussian;
     EreSpec ere;
+    FoldedScenarioSpec folded;
 };
 
 struct Scenario {

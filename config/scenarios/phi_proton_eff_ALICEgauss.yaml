@@ -1,0 +1,10 @@
+channel: phi_proton_eff
+name: ALICEgauss
+mode: kp_and_ll
+coupling: independent
+channels:
+  - spin: eff
+    potential:
+      type: gaussian
+      V0_MeV: 2.5
+      b_fm: 2.6726

@@ -34,8 +34,8 @@ void writeCSV(const char* fname, const std::vector<Curve>& curves,
     std::fprintf(f, "k_MeV");
     for (double R : Rs)
         for (const auto& c : curves) {
-            std::fprintf(f, ",LL_%s_R%.1f", c.name.c_str(), R);
-            if (c.kp) std::fprintf(f, ",KP_%s_R%.1f", c.name.c_str(), R);
+            std::fprintf(f, ",LL_%s_R%.2f", c.name.c_str(), R);
+            if (c.kp) std::fprintf(f, ",KP_%s_R%.2f", c.name.c_str(), R);
         }
     std::fprintf(f, "\n");
     for (int i = 1; i <= nk; ++i) {
@@ -76,11 +76,17 @@ int runMakeCf(const std::vector<std::string>& args) {
     std::string scenarios;
     std::string configRoot = getConfigRoot(args);
     std::string outFile;
+    std::string radiiArg;
+    double kMaxOverride = -1.0;
+    int nkOverride = -1;
 
     for (std::size_t i = 0; i + 1 < args.size(); ++i) {
         if (args[i] == "--channel") channel = args[i + 1];
         if (args[i] == "--scenarios") scenarios = args[i + 1];
         if (args[i] == "--output" || args[i] == "-o") outFile = args[i + 1];
+        if (args[i] == "--radii") radiiArg = args[i + 1];
+        if (args[i] == "--kmax") kMaxOverride = std::stod(args[i + 1]);
+        if (args[i] == "--nk") nkOverride = std::stoi(args[i + 1]);
     }
 
     femto::ChannelRegistry registry(configRoot);
@@ -110,11 +116,19 @@ int runMakeCf(const std::vector<std::string>& args) {
     double kMax = 300.0;
     int nk = 150;
     if (channel == "phi_alpha") {
-        Rs = {1.2, 2.5, 5.0};
+        Rs = {1.0, 3.0, 5.0};
         kMax = 200.0;
+    } else if (channel == "phi_proton" || channel == "phi_proton_eff") {
+        Rs = {1.08};
     } else {
         Rs = {1.2, 3.0};
     }
+    if (!radiiArg.empty()) {
+        Rs.clear();
+        for (const auto& r : splitComma(radiiArg)) Rs.push_back(std::stod(r));
+    }
+    if (kMaxOverride > 0.0) kMax = kMaxOverride;
+    if (nkOverride > 0) nk = nkOverride;
 
     if (outFile.empty()) {
         if (channel == "phi_proton") outFile = "cf_phip.csv";

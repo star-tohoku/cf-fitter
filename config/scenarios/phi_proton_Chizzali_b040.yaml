@@ -1,0 +1,16 @@
+channel: phi_proton
+name: Chizzali_b040
+mode: kp_and_ll
+coupling: independent
+channels:
+  - spin: quartet_4S32
+    potential:
+      type: gaussian
+      tune:
+        targetF0: 1.43
+        b_fm: 1.07
+  - spin: doublet_2S12
+    potential:
+      type: gaussian
+      b_fm: 0.40
+      V0_MeV: 931.5

@@ -1,0 +1,9 @@
+name: phi_proton_eff
+massA_MeV: 1019.461
+massB_MeV: 938.272
+identical: false
+qsAmplitude: 0.0
+spinChannels:
+  - name: eff
+    weight: 1.0
+    defaultInteracting: true

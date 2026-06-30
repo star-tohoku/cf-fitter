@@ -1,5 +1,5 @@
 channel: phi_proton
-name: ALICEeff
+name: ALICEfig
 mode: ll_only
 coupling: effective
 channels:

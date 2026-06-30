@@ -1,0 +1,17 @@
+channel: phi_alpha
+name: q_nofold
+mode: kp_and_ll
+coupling: independent
+channels:
+  - spin: spin1
+    potential:
+      type: folded
+      fold: false
+      phiN_central:
+        mode: quartet_only
+        doublet_b_fm: 0.32
+        doublet_target_f0: -1.54
+      density:
+        type: gaussian_sg
+        A: 4
+        rms_fm: 1.56

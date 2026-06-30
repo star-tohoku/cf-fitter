@@ -4,6 +4,7 @@
 #include "femto/FemtoModels.hpp"
 #include "femto/YamlReader.hpp"
 #include <dirent.h>
+#include <cmath>
 #include <stdexcept>
 
 namespace femto {
@@ -25,6 +26,36 @@ CouplingScheme parseCoupling(const std::string& s) {
     if (s == "effective") return CouplingScheme::EffectiveSingleChannel;
     if (s == "coupled") return CouplingScheme::CoupledRadial;
     return CouplingScheme::Independent;
+}
+
+
+FoldedScenarioSpec parseFolded(const YamlNode& pot) {
+    FoldedScenarioSpec f;
+    f.fold = yamlBool(pot, "fold", true);
+
+    auto densityIt = pot.children.find("density");
+    if (densityIt != pot.children.end()) {
+        f.density.A = yamlDouble(densityIt->second, "A", f.density.A);
+        f.density.rms_fm = yamlDouble(densityIt->second, "rms_fm", f.density.rms_fm);
+        f.density.b_fm = yamlDouble(densityIt->second, "b_fm", f.density.b_fm);
+    }
+
+    auto centralIt = pot.children.find("phiN_central");
+    if (centralIt != pot.children.end()) {
+        const std::string mode = yamlScalar(centralIt->second, "mode", "quartet_only");
+        if (mode == "quartet_plus_doublet" || mode == "spin_average") {
+            f.central.quartetWeight = 2.0 / 3.0;
+            f.central.doubletWeight = 1.0 / 3.0;
+        } else if (mode == "quartet_only") {
+            f.central.quartetWeight = 1.0;
+            f.central.doubletWeight = 0.0;
+        }
+        f.central.quartetWeight = yamlDouble(centralIt->second, "quartet_weight", f.central.quartetWeight);
+        f.central.doubletWeight = yamlDouble(centralIt->second, "doublet_weight", f.central.doubletWeight);
+        f.central.doublet_b_fm = yamlDouble(centralIt->second, "doublet_b_fm", f.central.doublet_b_fm);
+        f.central.doublet_target_f0 = yamlDouble(centralIt->second, "doublet_target_f0", f.central.doublet_target_f0);
+    }
+    return f;
 }
 
 GaussianPotentialSpec parseGaussian(const YamlNode& pot) {
@@ -64,6 +95,8 @@ Scenario parseScenarioNode(const YamlNode& root) {
             si.potentialType = parsePotentialType(ptype);
             if (si.potentialType == PotentialType::Gaussian)
                 si.gaussian = parseGaussian(potIt->second);
+            else if (si.potentialType == PotentialType::Folded)
+                si.folded = parseFolded(potIt->second);
             else if (si.potentialType == PotentialType::Ere) {
                 si.ere.f0_re = yamlDouble(potIt->second, "f0_re", 0.0);
                 si.ere.f0_im = yamlDouble(potIt->second, "f0_im", 0.0);
@@ -80,6 +113,36 @@ Scenario parseScenarioNode(const YamlNode& root) {
         sc.channels.push_back(si);
     }
     return sc;
+}
+
+
+GaussianSpec buildPhiNCentral(const PhiNCentralSpec& central) {
+    GaussianSpec spec;
+    const GaussianTerm quartet[] = {
+        {-371.0, 0.15},
+        { -50.0, 0.66},
+        { -31.0, 1.09},
+    };
+    for (const auto& t : quartet) {
+        if (central.quartetWeight != 0.0)
+            spec.terms.push_back({central.quartetWeight * t.V_MeV, t.b_fm});
+    }
+
+    if (central.doubletWeight != 0.0) {
+        double V0 = 0.0;
+        if (std::fabs(central.doublet_target_f0 + 1.54) > 1e-9)
+            throw std::runtime_error("custom doublet target is not implemented; use target -1.54");
+        if (std::fabs(central.doublet_b_fm - 0.40) < 1e-9)
+            V0 = 931.5;
+        else if (std::fabs(central.doublet_b_fm - 0.55) < 1e-9)
+            V0 = 571.5;
+        else if (std::fabs(central.doublet_b_fm - 0.70) < 1e-9)
+            V0 = 413.5;
+        else
+            throw std::runtime_error("custom doublet folded tuning is not implemented; use doublet_b_fm: 0.40, 0.55, or 0.70");
+        spec.terms.push_back({-central.doubletWeight * V0, central.doublet_b_fm});
+    }
+    return spec;
 }
 
 } // namespace
@@ -156,6 +219,14 @@ std::vector<Scenario::ResolvedSpin> Scenario::resolve(const ChannelSpec& channel
                 gaussianPotential({{-V0, b}}), mu_MeV);
             if (!si.gaussian.useTune)
                 rs.solver->scatteringParams(rs.f0_re, rs.d0_fm);
+        } else if (si.potentialType == PotentialType::Folded) {
+            FoldedPotentialSpec fs;
+            fs.phiNCentral = buildPhiNCentral(si.folded.central);
+            fs.density = si.folded.density;
+            fs.fold = si.folded.fold;
+            rs.solver = std::make_shared<RadialSolverS>(
+                PotentialBuilder::foldedGaussian(fs), mu_MeV);
+            rs.solver->scatteringParams(rs.f0_re, rs.d0_fm);
         }
         out.push_back(std::move(rs));
     }

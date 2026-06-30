@@ -1,0 +1,17 @@
+channel: phi_proton
+name: ChizzaliERE
+mode: ll_only
+coupling: independent
+channels:
+  - spin: doublet_2S12
+    potential:
+      type: ere
+      f0_re: -1.54
+      f0_im: 0.0
+      d0_fm: 0.39
+  - spin: quartet_4S32
+    potential:
+      type: ere
+      f0_re: 1.43
+      f0_im: 0.0
+      d0_fm: 2.36
