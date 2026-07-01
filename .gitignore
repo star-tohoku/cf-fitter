@@ -9,6 +9,7 @@ cf-fit
 *.pdf
 .DS_Store
 docs/develop
+docs/note
 figures/*.md
 figures/*.pdf
 figures/*.png
