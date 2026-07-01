@@ -1,0 +1,14 @@
+channel: phi_alpha
+name: q_chizzali_tpe_nofold
+mode: kp_and_ll
+coupling: independent
+channels:
+  - spin: spin1
+    potential:
+      type: folded_phi_n
+      quartet: chizzali_ta12_tpe
+      fold: false
+      density:
+        type: gaussian_sg
+        A: 4
+        rms_fm: 1.56

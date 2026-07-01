@@ -3,7 +3,7 @@
 
 #include "femto/ChannelSpec.hpp"
 #include "femto/PotentialBuilder.hpp"
-#include <complex>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -20,7 +20,14 @@ enum class CouplingScheme {
     CoupledRadial
 };
 
-enum class PotentialType { Gaussian, Ere, Folded, HalQuartetFitB, HalQuartetChizzaliTa12TPE };
+enum class PotentialType {
+    Gaussian,
+    Ere,
+    Folded,
+    FoldedPhiN,
+    HalQuartetFitB,
+    HalQuartetChizzaliTa12TPE
+};
 
 struct GaussianPotentialSpec {
     double V0_MeV = 0.0;
@@ -49,6 +56,12 @@ struct FoldedScenarioSpec {
     bool fold = true;
 };
 
+struct FoldedPhiNScenarioSpec {
+    std::string quartet = "hal_fitB";
+    GaussianDensitySpec density;
+    bool fold = true;
+};
+
 struct SpinInteractionSpec {
     std::string spin;
     bool interacting = true;
@@ -56,6 +69,7 @@ struct SpinInteractionSpec {
     GaussianPotentialSpec gaussian;
     EreSpec ere;
     FoldedScenarioSpec folded;
+    FoldedPhiNScenarioSpec foldedPhiN;
 };
 
 struct Scenario {
@@ -101,6 +115,13 @@ struct FoldedPotentialSummary {
 
 FoldedPotentialSummary summarizeFoldedScenario(const Scenario& scenario,
                                                const ChannelSpec& channel);
+
+FoldedPotentialSummary summarizePhiAlphaPotential(const Scenario& scenario,
+                                                  const ChannelSpec& channel);
+
+GaussianSpec buildPhiNCentralSpec(const PhiNCentralSpec& central);
+std::function<double(double)> barePhiNCentralPotential(const PhiNCentralSpec& central);
+std::function<double(double)> phiAlphaFoldedPotential(const Scenario& scenario);
 
 } // namespace femto
 

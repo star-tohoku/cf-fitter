@@ -36,6 +36,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "figures"))
 OUT = ROOT / "figures" / "cf_fitter_summary_revised.pdf"
 PHIP_REF = ROOT / "validation" / "phi_p"
 PHIP_MODELS = PHIP_REF / "generated_phi_proton_spinavg_R1p08.csv"
@@ -47,7 +48,6 @@ CHIZZALI_REF = ROOT / "validation" / "chizzali_reference"
 CHIZZALI_C3HALF = CHIZZALI_REF / "chizzali_fig2_c3half_screenshot_digitized_v0.csv"
 PHIALPHA = ROOT / "cf_phialpha_folded.csv"
 PHIALPHA_SUMMARY = ROOT / "figures" / "phi_alpha_potential_summary.csv"
-ETMINAN = ROOT / "validation" / "etminan_phialpha_reference.csv"
 
 COLORS = {
     "alice": "#000000",
@@ -743,19 +743,13 @@ def figure_phi_alpha_matrix(pdf: PdfPages):
 def figure_etminan(pdf: PdfPages):
     data = read_csv(PHIALPHA)
     fig, axes = plt.subplots(1, 3, figsize=(12.6, 4.5), sharey=True)
-    note = "Literal digitization of Etminan's published curve: pending. Quartet-only/fold is the Etminan configuration regenerated in this framework; orange band scans the doublet range."
-
-    et_data = None
-    et_col = None
-    if ETMINAN.exists():
-        et_data = read_csv(ETMINAN)
-        et_col = next((c for c in et_data if c != "k_MeV"), None)
-        note = "Etminan reference CSV was found and plotted where a matching/common curve column is available."
+    note = (
+        "Quartet-only/fold is the Etminan-like configuration in this framework; "
+        "orange band scans the doublet range."
+    )
 
     for ax, R in zip(axes, [1.0, 3.0, 5.0]):
         rs = f"R{R:.2f}"
-        if et_data and et_col:
-            ax.plot(et_data["k_MeV"], et_data[et_col], color="0.25", lw=2.0, label="Etminan published reference")
         shade_qd_band(ax, data, "fold", R, COLORS["qd"], 0.22)
         ax.plot(data["k_MeV"], data[f"KP_q_fold_{rs}"], color=COLORS["q"], lw=2.2, label="Etminan configuration: q/fold KP")
         ax.plot(data["k_MeV"], data[f"KP_qd_fold_{rs}"], color=COLORS["qd"], lw=2.2, label="This work: q+d/fold KP")
@@ -835,6 +829,34 @@ def figure_table(pdf: PdfPages):
     plt.close(fig)
 
 
+def figure_phi_alpha_chizzali_tpe(pdf: PdfPages):
+    chizzali_csv = ROOT / "validation" / "phi_alpha" / "generated_q_chizzali_tpe.csv"
+    if not chizzali_csv.exists():
+        print("skip Chizzali TPE phi-alpha page: missing validation/phi_alpha/generated_q_chizzali_tpe.csv")
+        return
+    sys.path.insert(0, str(ROOT / "figures"))
+    from make_phi_alpha_chizzali_tpe_figure import make_figure as chizzali_tpe_figure
+
+    chizzali_tpe_figure(pdf)
+
+
+def figure_phi_alpha_doublet_shape_uncertainty(pdf: PdfPages):
+    if not PHIALPHA.exists():
+        print("skip doublet-shape uncertainty page: missing cf_phialpha_folded.csv")
+        return
+    sys.path.insert(0, str(ROOT / "figures"))
+    from make_phi_alpha_doublet_shape_uncertainty import make_figure as doublet_uncertainty_figure
+
+    doublet_uncertainty_figure(read_csv(PHIALPHA), pdf)
+
+
+def figure_phi_alpha_doublet_potential_shapes(pdf: PdfPages):
+    sys.path.insert(0, str(ROOT / "figures"))
+    from make_phi_alpha_doublet_potential_shapes import make_figure as potential_shapes_figure
+
+    potential_shapes_figure(pdf)
+
+
 def main():
     required = [
         PHIP_REF / "phi_p_ALICE_LL_reference.csv",
@@ -859,6 +881,9 @@ def main():
         figure_phi_alpha_matrix(pdf)
         figure_etminan(pdf)
         figure_table(pdf)
+        figure_phi_alpha_chizzali_tpe(pdf)
+        figure_phi_alpha_doublet_shape_uncertainty(pdf)
+        figure_phi_alpha_doublet_potential_shapes(pdf)
     legacy = ROOT / "figures" / "cf_fitter_summary.pdf"
     legacy.write_bytes(OUT.read_bytes())
     print(f"wrote {OUT.relative_to(ROOT)}")

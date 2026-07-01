@@ -23,7 +23,8 @@ const char* tableLabelForScenario(const std::string& name) {
     if (name == "q_nofold") return "quartet only / no fold";
     if (name == "q_fold") return "quartet only / fold";
     if (name == "qd_nofold") return "quartet+doublet / no fold";
-    if (name == "qd_fold") return "quartet+doublet / fold";
+    if (name == "q_chizzali_tpe_nofold") return "Chizzali TPE quartet / no fold";
+    if (name == "q_chizzali_tpe_fold") return "Chizzali TPE quartet / fold";
     return "";
 }
 
@@ -61,7 +62,7 @@ int runPhiAlphaSummary(const std::vector<std::string>& args) {
 
     for (const auto& sn : scenNames) {
         femto::Scenario sc = femto::loadScenarioByName("phi_alpha", sn, configRoot);
-        femto::FoldedPotentialSummary summary = femto::summarizeFoldedScenario(sc, ch);
+        femto::FoldedPotentialSummary summary = femto::summarizePhiAlphaPotential(sc, ch);
 
         std::fprintf(f, "%s,%s", sc.name.c_str(), summary.fold ? "true" : "false");
         if (summary.hasDoublet)

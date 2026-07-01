@@ -12,6 +12,7 @@ void usage() {
     std::printf("  cf-calc validate [--config DIR]\n");
     std::printf("  cf-calc make-cf --channel NAME [--scenarios A,B] [--output FILE] [--config DIR]\n");
     std::printf("  cf-calc phi-alpha-summary [--output FILE] [--config DIR]\n");
+    std::printf("  cf-calc phi-alpha-potentials [--bare-output FILE] [--folded-output FILE] [--summary-output FILE] [--config DIR]\n");
     std::printf("\nExamples:\n");
     std::printf("  cf-calc validate\n");
     std::printf("  cf-calc make-cf --channel phi_proton --scenarios HAL,HALplusBound,ALICEeff\n");
@@ -35,6 +36,7 @@ int main(int argc, char** argv) {
         if (cmd == "validate") return runValidate(args);
         if (cmd == "make-cf") return runMakeCf(args);
         if (cmd == "phi-alpha-summary") return runPhiAlphaSummary(args);
+        if (cmd == "phi-alpha-potentials") return runPhiAlphaPotentials(args);
         if (cmd == "help" || cmd == "-h" || cmd == "--help") {
             usage();
             return 0;
